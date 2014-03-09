@@ -6,7 +6,7 @@ import re
 import os
 import subprocess as sub
 
-cgiUrl = "/redhat-support-plugin-rhev/cgi/ext-snapshot.cgi"
+cgiUrl = "/ext-plugin-rhev/cgi/ext-snapshot.cgi"
 
 def executeExtSnapCommand(args=[]):
     cmd = ['/usr/bin/python',os.path.dirname(__file__)+'/snapshotHandler.py'] + args
@@ -45,6 +45,7 @@ def createTextArea(selectedIndex):
     print text + '</textarea><br/><br/>'
     if selectedIndex == 0 :
         print 'Your New Snapshot Name:<input type="text" name="SnapName" value="" />'
+        print '<input type="checkbox" name="withMemory" value="1" checked="checked" /> With memory'
         print '<br/>'
     print '<input type="submit" name="cmdCreateBtn" value="Create"' 
     if selectedIndex:

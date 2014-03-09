@@ -49,4 +49,12 @@
 	</web> 
 	</module> 
 	<!-- END Red Hat Support Plug-in DO NOT REMOVE THIS COMMENT -->
+	<!-- START Tony ext Plug-in DO NOT REMOVE THIS COMMENT --> 
+	<module> 
+	<web> 
+	<web-uri>ext-plugin-rhev.war</web-uri> 
+	<context-root>/ext-plugin-rhev</context-root> 
+	</web> 
+	</module> 
+	<!-- END Tony ext Plug-in DO NOT REMOVE THIS COMMENT -->
 </application>
