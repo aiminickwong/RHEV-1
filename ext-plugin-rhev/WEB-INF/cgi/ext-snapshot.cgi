@@ -96,8 +96,42 @@ def main():
     # Print HTML header
     print "Content-Type: text/html\n\n"
     
+    action = getFormValue('cmdCreateBtn')
+    if action == 'Create':
+        SnapName = getFormValue('SnapName').strip()
+        if len(SnapName) > 0:
+            lines  = executeExtSnapCommand(['-o','create','-v',vmname,'-s',SnapName]).split('\n')
+            for line in lines:
+                printOutput(line)
+                printOutput('\n')
+
     selectedIndex = getFormValue('snapDropDown')
     if selectedIndex:
+
+        action = getFormValue('cmdDeleteBtn'):
+        if action == 'Delete':
+            alist = getSnapshots(vmname)
+            if len(alist) > 0:
+                printOutput(alist[selectedIndex-1])
+                SnapName = alist[selectedIndex-1]
+                if len(SnapName) > 0:
+                    lines  = executeExtSnapCommand(['-o','delete','-v',vmname,'-s',SnapName]).split('\n')
+                    for line in lines:
+                        printOutput(line)
+                        printOutput('\n')
+
+        action = getFormValue('cmdRestoreBtn'):
+        if action == 'Restore':
+            alist = getSnapshots(vmname)
+            if len(alist) > 0:
+                printOutput(alist[selectedIndex-1])
+                SnapName = alist[selectedIndex-1]
+                if len(SnapName) > 0:
+                    lines  = executeExtSnapCommand(['-o','restore','-v',vmname,'-s',SnapName]).split('\n')
+                    for line in lines:
+                        printOutput(line)
+                        printOutput('\n')
+
         createForm(vmname,int(selectedIndex))
     else:
         createForm(vmname)
@@ -108,6 +142,8 @@ def main():
     # printOutput(output)
     # output = '%s' % executeExtSnapCommand(['-o','list','-v',vmname])
     # printOutput(output)
+    output = '%s' % form
+    printOutput(output)
 
 try:
     main()
