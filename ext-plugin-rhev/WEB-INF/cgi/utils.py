@@ -30,15 +30,16 @@ class Utils():
         def curl_base_method(self, method, api):
         	"""
         	"""
+                rhevm_ip = '10.66.216.14'
         	password = 'Redhat1!'
         	cmd =   "curl -X %s " % method
         	cmd += "-H 'Content-type: application/xml'  "
         	cmd += "-u admin@internal:%s " % password
         	cmd += "-k "
                 if api.startswith('/'):
-        	   cmd += "https://rhevm.example.com:443%s " % api
+        	   cmd += "https://%s:443%s " % (rhevm_ip,api)
                 else:
-        	   cmd += "https://rhevm.example.com:443/api/%s " % api
+        	   cmd += "https://%s:443/api/%s " % (rhevm_ip,api)
         	return cmd
 
         def curl_get_method(self, api):

@@ -12,9 +12,6 @@ import optparse
 import time
 import os
 
-vmName = 'vm01'
-snapName = 'snap2'
-option = 'restore'
 
 class RedhatCmccRestore(object):
 
@@ -57,7 +54,7 @@ class RedhatCmccRestore(object):
     def rcr_get_vmName(self, vmID):
         """
         """
-        vmInfo = rcr.rcr_get_vmInfo(vmID)
+        vmInfo = self.rcr_get_vmInfo(vmID)
         ioBuffer = Utils().xml_to_ioBuffer(vmInfo)
         root = ioBuffer.documentElement
         vm_name_node = root.getElementsByTagName('name')[0]
@@ -125,7 +122,7 @@ class RedhatCmccRestore(object):
                   #  snap_name,vm_name)
 
         #create xmlStr
-        vmInfo = rcr.rcr_get_vmInfo(vmID)
+        vmInfo = self.rcr_get_vmInfo(vmID)
         ioBuffer = Utils().xml_to_ioBuffer(vmInfo)
         root = ioBuffer.documentElement
 
@@ -142,7 +139,7 @@ class RedhatCmccRestore(object):
         root.removeChild(name)
 
         name_node = doc.createElement('name')
-        vm_name_new = '%s_%s'% (vmName,Utils().rpc_get_current_time())
+        vm_name_new = '%s_%s'% (vm_name, Utils().rpc_get_current_time())
         name_txt = doc.createTextNode(vm_name_new)
         name_node.appendChild(name_txt)
         root.appendChild(name_node)
@@ -185,7 +182,7 @@ class RedhatCmccRestore(object):
     def rcr_get_vm_status(self, vmID):
         """
         """
-        vmInfo = rcr.rcr_get_vmInfo(vmID)
+        vmInfo = self.rcr_get_vmInfo(vmID)
         ioBuffer = Utils().xml_to_ioBuffer(vmInfo)
         root = ioBuffer.documentElement
         status_node = root.getElementsByTagName('status')[0]
@@ -196,7 +193,7 @@ class RedhatCmccRestore(object):
     def rcr_update_vmName(self,vmID, vmName):
         """
         """
-        vmInfo = rcr.rcr_get_vmInfo(vmID)
+        vmInfo = self.rcr_get_vmInfo(vmID)
         ioBuffer = Utils().xml_to_ioBuffer(vmInfo)
         root = ioBuffer.documentElement
 
@@ -225,7 +222,7 @@ class RedhatCmccRestore(object):
     def rcr_set_nics_dict(self, vmID, mac_map):
         """
         """
-        #nicInfo = rcr.rcr_get_nic(vmID)
+        #nicInfo = self.rcr_get_nic(vmID)
         api = 'vms/%s/nics' % vmID
         nicInfo = Utils().curl_get_method(api)
         print 'nicInfo: ',

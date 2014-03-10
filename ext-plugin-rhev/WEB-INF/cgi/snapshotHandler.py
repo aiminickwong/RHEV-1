@@ -329,7 +329,6 @@ def get_option():
 	return (opts, args)
 
 if __name__ == '__main__':
-	print 'hello world!!!'
 	opts, args = get_option()
 	hostInfo = opts.hostInfo
 	option = opts.option
