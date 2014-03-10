@@ -108,7 +108,7 @@ def main():
     selectedIndex = getFormValue('snapDropDown')
     if selectedIndex:
 
-        action = getFormValue('cmdDeleteBtn'):
+        action = getFormValue('cmdDeleteBtn')
         if action == 'Delete':
             alist = getSnapshots(vmname)
             if len(alist) > 0:
@@ -120,7 +120,7 @@ def main():
                         printOutput(line)
                         printOutput('\n')
 
-        action = getFormValue('cmdRestoreBtn'):
+        action = getFormValue('cmdRestoreBtn')
         if action == 'Restore':
             alist = getSnapshots(vmname)
             if len(alist) > 0:
