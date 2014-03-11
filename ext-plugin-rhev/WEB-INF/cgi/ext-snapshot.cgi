@@ -103,12 +103,15 @@ def main():
     
     action = getFormValue('cmdCreateBtn')
     if action == 'Create':
-        SnapName = getFormValue('SnapName').strip()
-        if len(SnapName) > 0:
-            lines  = executeExtSnapCommand(['-o','create','-v',vmname,'-s',SnapName]).split('\n')
-            for line in lines:
-                printOutput(line)
-                printOutput('\n')
+        #try:
+            SnapName = getFormValue('SnapName').strip()
+            if len(SnapName) > 0:
+                lines  = executeExtSnapCommand(['-o','create','-v',vmname,'-s',SnapName]).split('\n')
+                for line in lines:
+                    printOutput(line)
+                    printOutput('\n')
+        #except:
+        #    pass
 
     selectedIndex = getFormValue('snapDropDown')
     if selectedIndex:
@@ -147,8 +150,8 @@ def main():
     # printOutput(output)
     # output = '%s' % executeExtSnapCommand(['-o','list','-v',vmname])
     # printOutput(output)
-    output = '%s' % form
-    printOutput(output)
+    # output = '%s' % form
+    # printOutput(output)
 
 try:
     main()

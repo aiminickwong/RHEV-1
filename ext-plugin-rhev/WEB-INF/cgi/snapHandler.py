@@ -4,6 +4,7 @@ import ovirtsdk.api
 import config
 import pg
 import pexpect
+import time
 
 from time import sleep
 from ovirtsdk.xml import params
@@ -143,8 +144,21 @@ class SnapshotHandler(object):
         print 'vmname', vmName
         print vmObj.status.state
         if vmObj.status.state == 'up':
-            vmObj.shutdown()
-        print 'vmObj.status.state'
+            #vmObj.shutdown()
+            print "we need poweroff current vm before we restore it from snapshot"
+            vmObj.stop()
+        #we need wait current vm been poweroff
+        #TODO
+        print 'vmObj.status.state = ',vmObj.status.state
+        while vmObj.status.state != 'down':
+            try:
+                vmObj.stop()
+            except:
+                pass
+            vmObj = self.ssh_get_vmObj(vmName)
+            print 'vmObj.status.state = ',vmObj.status.state
+            time.sleep(10)
+        #TODO
         (vmID_new,vmID,snapID) = rcr.rcr_create_vm_by_snap(realVmName, snapName)
         print 'vmID_new: ',vmID_new
         print 'vmID: ', vmID

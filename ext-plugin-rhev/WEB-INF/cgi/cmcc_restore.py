@@ -309,18 +309,19 @@ class RedhatCmccRestore(object):
         #get_snap_memery_path
         snap_src_path = self.rcr_get_snap_memery_path(vmID, snapID)
         snap_dst_path = self.rcr_get_active_path(vmID_new)
-        src_dddd = os.path.join(snap_src_path,"dddd")
-        src_eeee = os.path.join(snap_src_path,"eeee")
-        dst_dddd = os.path.join(snap_dst_path,"dddd")
-        dst_eeee = os.path.join(snap_dst_path,"eeee") 
-        if os.path.exists(src_dddd) and os.path.exists(src_eeee):
-            print "This snapshot has memory"
-            #if os.path.exists(snap_dst_path):
-                #removeSnapDstDir(active_volPath.split("/images")[0].split('data-center')[1]+active_volPath.split("images")[1])
-            os.makedirs(snap_dst_path)
-            os.symlink(src_dddd, dst_dddd)
-            os.symlink(src_eeee, dst_eeee)
-            print dst_dddd
+        if snap_src_path:
+            src_dddd = os.path.join(snap_src_path,"dddd")
+            src_eeee = os.path.join(snap_src_path,"eeee")
+            dst_dddd = os.path.join(snap_dst_path,"dddd")
+            dst_eeee = os.path.join(snap_dst_path,"eeee") 
+            if os.path.exists(src_dddd) and os.path.exists(src_eeee):
+                print "This snapshot has memory"
+                #if os.path.exists(snap_dst_path):
+                    #removeSnapDstDir(active_volPath.split("/images")[0].split('data-center')[1]+active_volPath.split("images")[1])
+                os.makedirs(snap_dst_path)
+                os.symlink(src_dddd, dst_dddd)
+                os.symlink(src_eeee, dst_eeee)
+                print dst_dddd
          
 	api = 'vms/%s/start' % vmID_new
         Utils().curl_post_method(api,"<action/>")
