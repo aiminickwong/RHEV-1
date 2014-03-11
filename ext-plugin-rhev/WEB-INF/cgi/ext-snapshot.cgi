@@ -9,7 +9,8 @@ import subprocess as sub
 cgiUrl = "/ext-plugin-rhev/cgi/ext-snapshot.cgi"
 
 def executeExtSnapCommand(args=[]):
-    cmd = ['/usr/bin/python',os.path.dirname(__file__)+'/snapshotHandler.py'] + args
+    #cmd = ['/usr/bin/python',os.path.dirname(__file__)+'/snapshotHandler.py'] + args
+    cmd = ['/usr/bin/python',os.path.dirname(__file__)+'/snapHandler.py'] + args
     return sub.Popen(cmd, stdout=sub.PIPE).stdout.read().rstrip('\n')
 
 def getSnapshots(vmname):
@@ -51,6 +52,10 @@ def createTextArea(selectedIndex):
     if selectedIndex:
         print 'disabled="disabled"'
     print '/>'
+    #print '<input type="submit" name="cmdListBtn" value="List"' 
+    #if selectedIndex:
+    #    print 'disabled="disabled"'
+    #print '/>'
     print '<input type="submit" name="cmdDeleteBtn" value="Delete"'
     if selectedIndex == 0 :
         print 'disabled="disabled"'
@@ -112,8 +117,8 @@ def main():
         if action == 'Delete':
             alist = getSnapshots(vmname)
             if len(alist) > 0:
-                printOutput(alist[selectedIndex-1])
-                SnapName = alist[selectedIndex-1]
+                printOutput(alist[int(selectedIndex)-1])
+                SnapName = alist[int(selectedIndex)-1]
                 if len(SnapName) > 0:
                     lines  = executeExtSnapCommand(['-o','delete','-v',vmname,'-s',SnapName]).split('\n')
                     for line in lines:
@@ -124,8 +129,8 @@ def main():
         if action == 'Restore':
             alist = getSnapshots(vmname)
             if len(alist) > 0:
-                printOutput(alist[selectedIndex-1])
-                SnapName = alist[selectedIndex-1]
+                printOutput(alist[int(selectedIndex)-1])
+                SnapName = alist[int(selectedIndex)-1]
                 if len(SnapName) > 0:
                     lines  = executeExtSnapCommand(['-o','restore','-v',vmname,'-s',SnapName]).split('\n')
                     for line in lines:

@@ -7,11 +7,13 @@
 
 from utils import Utils
 from xml.dom import minidom
+import config
 import xml.dom
 import optparse
 import time
 import os
 
+PREFIX = config.PREFIX_FOR_VMNAME
 
 class RedhatCmccRestore(object):
 
@@ -113,9 +115,17 @@ class RedhatCmccRestore(object):
         使用snap创建新的vm.
         """
         vmID = self.rcr_get_vmID(vm_name)
+        print '==>'*20
+        print 'vm_name: ',
+        print vm_name
+        print '==>'*20
         if not vmID:
             raise Exception #' [e] Can not find vmID by vmName:%s!' % vm_name
         snapID = self.rcr_get_snapID(vmID, snap_name)
+        print '==>'* 20
+        print 'snapID'
+        print snapID
+        print '==>'* 20
 
         if not snapID:
             raise Exception #' [e] Can not find snapname[%s] on vmName[%s]!'% (
@@ -139,6 +149,14 @@ class RedhatCmccRestore(object):
         root.removeChild(name)
 
         name_node = doc.createElement('name')
+
+        flag = PREFIX 
+        res = vm_name.rsplit(flag, 1)
+        if len(res) > 2:
+            print ' [E] U have a illegal vm name !'
+            return 
+        vm_name = res[0]
+ 
         vm_name_new = '%s_%s'% (vm_name, Utils().rpc_get_current_time())
         name_txt = doc.createTextNode(vm_name_new)
         name_node.appendChild(name_txt)
@@ -284,7 +302,7 @@ class RedhatCmccRestore(object):
         self.rcr_update_vmName(vmID_new, vm_name)
         self.rcr_update_vmName(vmID, vm_name_new)
 
-    def rcr_restore_with_memory_snap(self,vmID_new,snapID):
+    def rcr_restore_with_memory_snap(self, vmID,vmID_new,snapID):
         """
         """
 	snapID = snapID
@@ -323,13 +341,13 @@ class RedhatCmccRestore(object):
         active_path = os.path.join('/rhev_snap', dcID, images[0], active_vol)
         return active_path
 
-    def rcr_get_snap_memery_path(self, vmID, snapID, ):
+    def rcr_get_snap_memery_path(self, vmID, snapID):
 	"""
 	"""
         dcID = self.rcr_get_datacenter(vmID)
         images = self.rcr_get_images(vmID)
         imageID = images[0]
-        snapVolList = self.rcr_get_snapVolumes(snapID) 
+        snapVolList = self.rcr_get_snapVolumes(vmID, snapID) 
         for imageID in images:
             path = os.path.join('/rhev_snap', dcID, imageID)
             if os.path.exists(path):
@@ -338,7 +356,7 @@ class RedhatCmccRestore(object):
                     if os.path.exists(path1):
                         return path1
 	
-    def rcr_get_snapVolumes(self, snapID):
+    def rcr_get_snapVolumes(self, vmID, snapID):
         """
         """
         api = 'vms/%s/snapshots/%s/disks' % (vmID,snapID)
@@ -430,7 +448,7 @@ if __name__ == '__main__':
     rcr.rcr_swap_mic(vmID_new,vmID)
     rcr.rcr_swap_name(vmID_new,vmID)
 
-    rcr.rcr_restore_with_memory_snap(vmID_new,snapID)
+    rcr.rcr_restore_with_memory_snap(vmID, vmID_new,snapID)
     print 'All task done!!!'
     #OK
     #rcr.rcr_rename_vm('vm01', 'tmp_vm')

@@ -14,6 +14,7 @@ from ovirtsdk.infrastructure.brokers import VMSnapshots
 
 from utils import Utils
 from cmcc_restore import RedhatCmccRestore
+from cmcc_snaplist import RedhatCmccSnapMap
 
 class SnapshotHandler(object):
 
@@ -24,20 +25,24 @@ class SnapshotHandler(object):
     def ssh_get_api(self):
         """
 	"""
-        api = ovirtsdk.api.API( url=config.OVIRT_URL, 
-                                insecure=True,
-                                username=config.OVIRT_USERNAME+'@'+config.OVIRT_DOMAIN,
-                                password=config.OVIRT_PASSWORD,
-                                ca_file=config.OVIRT_CA_FILE,)
+        api = ovirtsdk.api.API( 
+                  url=config.OVIRT_URL, 
+                  insecure=True,
+                  username=config.OVIRT_USERNAME+'@'+config.OVIRT_DOMAIN,
+                  password=config.OVIRT_PASSWORD,
+                  ca_file=config.OVIRT_CA_FILE,)
+
 	return api
 
     def ssh_get_db(self):
         """
 	"""
-        conn = pg.connect( dbname=config.OVIRT_DB_NAME,
-                           host=config.OVIRT_DB_HOST,
-			   user=config.OVIRT_DB_USER,
-			   passwd=config.OVIRT_DB_PASSWORD)
+        conn = pg.connect( 
+                   dbname=config.OVIRT_DB_NAME,
+                   host=config.OVIRT_DB_HOST,
+		   user=config.OVIRT_DB_USER,
+		   passwd=config.OVIRT_DB_PASSWORD)
+
 	return conn
 
     def ssh_get_vmList(self):
@@ -73,12 +78,12 @@ class SnapshotHandler(object):
         """
         """
         snapObjList = self.ssh_get_snapObjList(vmObj)
-        return [ self.ssh_get_snapName(snapObj) for snapObj in snapObjList]
+        return [self.ssh_get_snapName(snapObj) for snapObj in snapObjList ]
 
     def ssh_get_snapObj(self, vmName, snapName):
         """
         """
-        vmObj = self.ssh_get_vmObj(vmName)
+        vmObj = self.ssh_get_vmObj(vmName )
         for snapObj in self.ssh_get_snapObjList(vmObj):
             if self.ssh_get_snapName(snapObj) == snapName:
                 return snapObj
@@ -89,7 +94,7 @@ class SnapshotHandler(object):
         """
         """
         vmObj = self.ssh_get_vmObj(vmName)
-        snapList = self.ssh_get_snapList(vmObj)
+        snapList = self.ssh_list_snap(vmName, snapName)
         if snapName in snapList:
             return ' [e] Error snapshotName alreay existed.'
 
@@ -126,6 +131,12 @@ class SnapshotHandler(object):
     def ssh_restore_snap(self, vmName, snapName):
         """
         """
+        rcs = RedhatCmccSnapMap(self.api)
+        snapMap = rcs.rcs_get_snapMap(vmName)
+        snapInfo = snapMap.get(snapName)
+        realVmName = snapInfo.get('vmName')
+        print 'realVmName: ',realVmName
+
         rcr = RedhatCmccRestore()
         vmObj = self.ssh_get_vmObj(vmName)
         vmID = self.ssh_get_vmID(vmName)
@@ -134,14 +145,30 @@ class SnapshotHandler(object):
         if vmObj.status.state == 'up':
             vmObj.shutdown()
         print 'vmObj.status.state'
-        (vmID_new,vmID,snapID) = rcr.rcr_create_vm_by_snap(vmName, snapName)
+        (vmID_new,vmID,snapID) = rcr.rcr_create_vm_by_snap(realVmName, snapName)
         print 'vmID_new: ',vmID_new
         print 'vmID: ', vmID
         print 'snapID: ', snapID
         rcr.rcr_swap_mic(vmID_new,vmID)
         rcr.rcr_swap_name(vmID_new,vmID)
-        rcr.rcr_restore_with_memory_snap(vmID_new,snapID)
+        rcr.rcr_restore_with_memory_snap(vmID, vmID_new,snapID)
         print 'All task done!!!'
+
+    def ssh_list_snap(self, vmName, snapName):
+        """
+        """
+        rcsm = RedhatCmccSnapMap(self.api)
+        snapMap = rcsm.rcs_get_snapMap(vmName)
+        snapList = sorted(snapMap.keys())
+        return snapList
+ 
+    def ssh_delete_snap(self, vmName, snapName):
+        """
+        """
+        pass
+        
+
+    
 
 def get_option():
         parser = optparse.OptionParser()
@@ -168,27 +195,12 @@ if __name__ == '__main__':
 
     ssh = SnapshotHandler()
     vm_name = vmName
-    vm_list = ssh.ssh_get_vmList()
-    print '==>'*20
-    print 'vm_list:'
-    print vm_list
-    vm_obj = ssh.ssh_get_vmObj(vm_name)
-    print '==>'*20
-    print 'vm_name:',vm_name
-    print 'vm_obj:',vm_obj
-    snap_list = ssh.ssh_get_snapList(vm_obj)
-    print '==>'*20
-    print 'snap list: '
-    print snap_list
     snap_name = snapName
-    #ssh.ssh_create_snap(vm_name, snap_name)
-    #ssh.ssh_restore_snap(vm_name, snap_name)
+
+    acitonDict = {'create': ssh.ssh_create_snap,
+                  'list': ssh.ssh_list_snap,
+                  'restore': ssh.ssh_restore_snap, }
+    print acitonDict[option.lower()](vm_name, snap_name)
      
     
-
-  
-    
-
-
-
 
