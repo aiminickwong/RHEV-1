@@ -157,16 +157,20 @@ class RedhatCmccRestore(object):
             return 
         vm_name = res[0]
  
-        vm_name_new = '%s_%s'% (vm_name, Utils().rpc_get_current_time())
+        if vm_name.startswith(PREFIX):
+            l = vm_name.split(PREFIX)
+            vm_name = l[1]
+        vm_name_new = '%s%s%s%s'% (PREFIX,vm_name,PREFIX, Utils().rpc_get_current_time())
+
         name_txt = doc.createTextNode(vm_name_new)
         name_node.appendChild(name_txt)
         root.appendChild(name_node)
 
         xmlStr = root.toxml()
         
-        f=open('/tmp/aaa','w')
-        f.write(xmlStr)
-        f.close()
+        #f=open('/tmp/aaa','w')
+        #f.write(xmlStr)
+        #f.close()
 
         self.rcr_create_vm(xmlStr)
 
@@ -293,6 +297,10 @@ class RedhatCmccRestore(object):
         """
         """
         vm_name = self.rcr_get_vmName(vmID)
+        if vm_name.startswith(PREFIX):
+           l = vm_name.split(PREFIX)
+           vm_name = l[1]
+           vmID = self.rcr_get_vmID(vm_name)
         vm_name_new = self.rcr_get_vmName(vmID_new)
         vmName_tmp = vm_name +"-"+ Utils().rpc_get_current_time()
         #print vm_name

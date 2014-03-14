@@ -76,11 +76,16 @@ class RedhatCmccSnapMap(object):
         """
         flag = PREFIX
         targetVmList = []
-
-        for vn in vmNameList: 
-            r = vn.rsplit(flag, 1)
-            if r[0]==vmName and len(r[-1])==14 :
-                targetVmList.append(vn)
+        if vmName.startswith(PREFIX):
+            l = vmName.split(PREFIX)
+            #vmName = l[1]
+        else:
+            for vn in vmNameList: 
+                #r = vn.rsplit(flag, 1)
+                #if r[0]==vmName and len(r[-1])==14 :
+                #    targetVmList.append(vn)
+                if vn.startswith(PREFIX+vmName+PREFIX):
+                     targetVmList.append(vn)
         targetVmList.append(vmName)
 
         return targetVmList
