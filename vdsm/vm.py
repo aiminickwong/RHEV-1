@@ -3050,10 +3050,57 @@ class Vm(object):
             hooks.before_vm_dehibernate(srcDomXML, self.conf,
                                         {'FROM_SNAPSHOT': str(fromSnapshot)})
 
+            parsedSrcDomXML = _domParseStr(srcDomXML)
+
+            uuid = parsedSrcDomXML.childNodes[0]. \
+                getElementsByTagName('uuid')[0].childNodes[0].nodeValue
+
+            if uuid != self.id:
+
+                allDiskDeviceXmlElements = parsedSrcDomXML.childNodes[0]. \
+                    getElementsByTagName('devices')[0].getElementsByTagName('disk')
+
+                snappableDiskDeviceXmlElements = \
+                    _filterSnappableDiskDevices(allDiskDeviceXmlElements)
+
+                for snappableDiskDeviceXmlElement in snappableDiskDeviceXmlElements:
+                    diskType = snappableDiskDeviceXmlElement.getAttribute('type')
+                    if diskType not in ['file', 'block']:
+                        continue
+
+                    devname = snappableDiskDeviceXmlElement.getElementsByTagName('target')[0].\
+                              getAttribute('dev')
+
+                    for vmDrive in self._devices[DISK_DEVICES]:
+                        if vmDrive.name == devname:
+                            # update the type
+                            snappableDiskDeviceXmlElement.setAttribute(
+                                 'type', 'block' if vmDrive.blockDev else 'file')
+                            # update the path
+                            snappableDiskDeviceXmlElement.getElementsByTagName('source')[0]. \
+                                 setAttribute('dev' if vmDrive.blockDev else 'file',
+                                    vmDrive.path)
+
+                            # update the format (the disk might have been collapsed)
+                            snappableDiskDeviceXmlElement.getElementsByTagName('driver')[0]. \
+                                 setAttribute('type',
+                                     'qcow2' if vmDrive.format == 'cow' else 'raw')
+
+                            devpath = self.cif.prepareVolumePath( {'device': 'disk',
+                                    'imageID': vmDrive.imageID, 'domainID': vmDrive.domainID,
+                                    'volumeID': vmDrive.volumeID, 'poolID': vmDrive.poolID})
+
+
+                srcDomXML = parsedSrcDomXML.toxml()
+
             fname = self.cif.prepareVolumePath(self.conf['restoreState'])
             try:
                 if fromSnapshot:
-                    self._connection.restoreFlags(fname, srcDomXML, 0)
+                    if uuid != self.id:
+                        self.id = uuid
+                        self._connection.restoreFlags(fname, srcDomXML, libvirt.VIR_DOMAIN_SAVE_BYPASS_CACHE)
+                    else:
+                        self._connection.restoreFlags(fname, srcDomXML, 0)
                 else:
                     self._connection.restore(fname)
             finally:
