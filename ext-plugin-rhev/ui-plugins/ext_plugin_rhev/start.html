@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<!-- Page styles -->
+<!-- Actual plugin code -->
+</head>
+<body>
+</body>
+
+<script>
+        var cgiUrl = "/ext-plugin-rhev/cgi/ext-snapshot.cgi"
+	// Access plugin API from iframe context
+	var api = parent.pluginApi('ext_plugin_rhev');
+	api.register({
+		UiInit : function() {
+			
+			api.addSubTab('VirtualMachine', 'ext-Snapshot', 'ext-snapshot-subtab-virtual-machine',
+				cgiUrl ,{alignRight: true});
+			api.setTabAccessible('ext-snapshot-subtab-virtual-machine', true);
+			
+		},
+                VirtualMachineSelectionChange: function() {
+                       if (arguments.length == 1) {
+                          var vmName = arguments[0].name;
+                          api.setTabContentUrl('ext-snapshot-subtab-virtual-machine', cgiUrl + '?vmname=' + encodeURIComponent(vmName));
+                }
+           }
+
+	});
+	// Tell plugin infrastructure that we are ready
+	api.ready();
+</script>
+
+</html>

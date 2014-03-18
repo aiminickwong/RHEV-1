@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/application_1_4.xsd" version="1.4">
+  <description>oVirt server EAR</description>
+  <display-name>ENGINE</display-name>
+  <module>
+    <web>
+      <web-uri>root.war</web-uri>
+      <context-root>/</context-root>
+    </web>
+  </module>
+  <module>
+    <web>
+      <web-uri>ovirtengineweb.war</web-uri>
+      <context-root>/OvirtEngineWeb</context-root>
+    </web>
+  </module>
+  <module>
+    <web>
+      <web-uri>restapi.war</web-uri>
+      <context-root>/api</context-root>
+    </web>
+  </module>
+  <module>
+    <web>
+      <web-uri>userportal.war</web-uri>
+      <context-root>/UserPortal</context-root>
+    </web>
+  </module>
+  <module>
+    <web>
+      <web-uri>webadmin.war</web-uri>
+      <context-root>/webadmin</context-root>
+    </web>
+  </module>
+  <module>
+    <ejb>engine-genericapi.jar</ejb>
+  </module>
+  <module>
+    <ejb>engine-scheduler.jar</ejb>
+  </module>
+  <module>
+    <ejb>engine-bll.jar</ejb>
+  </module>
+	<!-- START Red Hat Support Plug-in DO NOT REMOVE THIS COMMENT --> 
+	<module> 
+	<web> 
+	<web-uri>redhat-support-plugin-rhev.war</web-uri> 
+	<context-root>/redhat-support-plugin-rhev</context-root> 
+	</web> 
+	</module> 
+	<!-- END Red Hat Support Plug-in DO NOT REMOVE THIS COMMENT -->
+	<!-- START Tony ext Plug-in DO NOT REMOVE THIS COMMENT --> 
+	<module> 
+	<web> 
+	<web-uri>ext-plugin-rhev.war</web-uri> 
+	<context-root>/ext-plugin-rhev</context-root> 
+	</web> 
+	</module> 
+	<!-- END Tony ext Plug-in DO NOT REMOVE THIS COMMENT -->
+</application>
