@@ -233,27 +233,35 @@ class RedhatCmccDelete(object):
         cmd = cmd
         return conn.query(cmd)
 
-    def rcd_get_hostInfo(self):
+    def rcd_get_hostInfo(self, vmName):
         """
         """
         #return ('root',self.rhevhIp,config.OVIRT_PASSWORD)
-        return ('root','10.66.216.105',config.OVIRT_PASSWORD)
+        
+        hostIP = ''
+        for vmObj in self.api.vms.list():
+            if vmObj.get_name() == vmName:
+                hostIP = self.api.hosts.get(id=vmObj.host.id).address
+        if hostIP:
+            return ('root', hostIP, config.OVIRT_PASSWORD)
+        
+        return None
     
 
-    def rcd_call_backendCmd(self,cmd):
+    def rcd_call_backendCmd(self,cmd, vmName):
         """ 
         """ 
-        user,ip,password = self.rcd_get_hostInfo()
+        user,ip,password = self.rcd_get_hostInfo(vmName)
         print user,
         print ip
         print password
         ret = ''
         print 'call cmd: %s' % cmd
-
         print 'test=========='
+
         ssh = pexpect.spawn('ssh %s@%s "%s"'%(user,ip,cmd), timeout=330)
         try:
-            expect = ssh.expect(['password', 'continue connecting (yes/no)?'])
+            expect = ssh.expect(['password', 'continue connecting (yes/no)?', ''])
             if expect == 0:
                 ssh.sendline(password)
             elif expect == 1:
@@ -267,13 +275,15 @@ class RedhatCmccDelete(object):
                 except  pexpect.EOF:
                     ssh.close()
             else:
-                    pass
+                    print 'ssh finished...'
         except pexpect.EOF:
+            print '====?2'
             ssh.close()
         else:
             ret = ssh.read()
             ssh.expect(pexpect.EOF)
             ssh.close()
+        print "test"
         return ret
 
 if __name__ == '__main__':
@@ -301,7 +311,7 @@ if __name__ == '__main__':
     
     #rcd.rcd_delete_snap(vmName, snapName)
     cmd = 'ls /'
-    print rcd.rcd_call_backendCmd(cmd)
+    print rcd.rcd_call_backendCmd(cmd, vmName)
     
 
     end_time = Utils().rpc_get_current_time()
