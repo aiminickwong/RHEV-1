@@ -4,6 +4,7 @@ import config
 
 from utils import Utils
 PREFIX = config.PREFIX_FOR_VMNAME 
+internalSnapName = "_.internal"
 
 def get_api():
     """
@@ -90,6 +91,33 @@ class RedhatCmccSnapMap(object):
         targetVmList.append(vmName)
 
         return targetVmList
+
+    def rcs_cleanup_orphan(self):
+        """
+        """
+        allVmObjList = self.api.vms.list()
+        allVmNameList = [ vo.get_name() for vo in allVmObjList ]
+        cleanVmList = []
+        for vn in allVmNameList: 
+            if vn.startswith(PREFIX):
+                l = vn.split(PREFIX)
+                if not l[1] in allVmNameList:
+                    cleanVmList.append(vn)
+                    vmObj = self.rcs_get_vmObj(vn)
+                    vmObj.delete()
+                else:
+                    snapMap = rcsm.rcs_get_snapMap(vn)
+                    if len(snapMap) == 0:
+                        cleanVmList.append(vn)
+                        vmObj = self.rcs_get_vmObj(vn)
+                        vmObj.delete()
+                    elif len(snapMap) == 1:
+                        snapInfo = snapMap.get(internalSnapName)
+                        if snapInfo:
+                            cleanVmList.append(vn)
+                            vmObj = self.rcs_get_vmObj(vn)
+                            vmObj.delete()
+        return cleanVmList
 
 if __name__ == '__main__':
     import time

@@ -355,14 +355,12 @@ class SnapshotHandler(object):
                     if snapObj.get_description() == snapName:
                         snapObj.delete()
     
-    def ssh_cleanup(self):
+    def ssh_cleanup(self,vmName,snapName):
         """
         """
         rcsm = RedhatCmccSnapMap(self.api)
-        snapMap = rcsm.rcs_get_snapMap(vmName)
-        snapList = sorted(snapMap.keys())
-        return snapList
-
+        cleanVmsList = rcsm.rcs_cleanup_orphan()
+        return cleanVmsList
         
 
 def get_option():
