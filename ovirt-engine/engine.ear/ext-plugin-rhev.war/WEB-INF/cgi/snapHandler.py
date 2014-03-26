@@ -355,6 +355,15 @@ class SnapshotHandler(object):
                     if snapObj.get_description() == snapName:
                         snapObj.delete()
     
+    def ssh_cleanup(self):
+        """
+        """
+        rcsm = RedhatCmccSnapMap(self.api)
+        snapMap = rcsm.rcs_get_snapMap(vmName)
+        snapList = sorted(snapMap.keys())
+        return snapList
+
+        
 
 def get_option():
         parser = optparse.OptionParser()
@@ -364,7 +373,8 @@ def get_option():
                                  help="Input: 'list': list all snapshots for vm \
                                  or 'create': create a new snapshot for vm \
                                  or 'delete': delete the snapshot with snapshotName\
-                                 or 'restore': restore vm using the snapshot")
+                                 or 'restore': restore vm using the snapshot \
+                                 or 'cleanup': clean up _. vms")
         parser.add_option('-v', action='store', dest='vmName')
         parser.add_option('-s', action='store', dest='snapName')
         parser.add_option('-m', action='store', dest='enMemery')
@@ -379,17 +389,19 @@ if __name__ == '__main__':
     vmName = opts.vmName
     snapName = opts.snapName
     enMemery = opts.enMemery
-    print hostInfo, option, vmName, snapName
 
-    ssh = SnapshotHandler(enMemery)
-    vm_name = vmName
-    snap_name = snapName
+    if option: 
+        ssh = SnapshotHandler(enMemery)
+        vm_name = vmName
+        snap_name = snapName
 
-    acitonDict = {'create': ssh.ssh_create_snap,
+        acitonDict = {'create': ssh.ssh_create_snap,
                   'list': ssh.ssh_list_snap,
                   'delete': ssh.ssh_delete_snap,
-                  'restore': ssh.ssh_restore_snap,}
- 
-    print acitonDict[option.lower()](vm_name, snap_name)
+                  'restore': ssh.ssh_restore_snap,
+                  'cleanup': ssh.ssh_cleanup,}
+
+        print hostInfo, option, vmName, snapName
+        print acitonDict[option.lower()](vm_name, snap_name)
      
     
