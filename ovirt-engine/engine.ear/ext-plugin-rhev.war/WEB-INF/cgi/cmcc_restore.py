@@ -349,10 +349,10 @@ class RedhatCmccRestore(object):
            vm_name = l[1]
            vmID = self.rcr_get_vmID(vm_name)
         vm_name_new = self.rcr_get_vmName(vmID_new)
-        vmName_tmp = ".-"+ Utils().rpc_get_current_time()
-        #print vm_name
-        #print vm_name_new
-        #print vmName_tmp
+        vmName_tmp = '%s%s%s%s'% (PREFIX,vm_name,PREFIX, self.get_branch_vm_no(vm_name))
+        print "vm_name=",vm_name
+        print "vm_name_new",vm_name_new
+        print "vmName_tmp=",vmName_tmp
         self.rcr_update_vmName(vmID, vmName_tmp)
         self.rcr_update_vmName(vmID_new, vm_name)
         self.rcr_update_vmName(vmID, vm_name_new)
@@ -384,12 +384,13 @@ class RedhatCmccRestore(object):
         ret = self._callDbCmd(sqlcmd).dictresult()[0]
         hiberVolHandle = ret.get('memory_volume')
         print "------------hiberVolHandle-----------:",hiberVolHandle
+        if hiberVolHandle:
 
-        sqlcmd = "update snapshots \
+            sqlcmd = "update snapshots \
                                 set memory_volume='%s' \
                                 where vm_id='%s'"%(hiberVolHandle,vmID_new)
 
-        self._callDbCmd(sqlcmd)
+            self._callDbCmd(sqlcmd)
 
 	api = 'vms/%s/start' % vmID_new
         Utils().curl_post_method(api,"<action/>")
@@ -502,6 +503,8 @@ if __name__ == '__main__':
 
     Utils().rpc_kill_vmRunPid(vmName) 
 
+    # print rcr.rcr_get_snapVolumes()
+
     #vmID = rcr.rcr_get_vmID(vmName)
     #print 'vmID: ',vmID
     #snapID = rcr.rcr_get_snapID(vmID, snapName)
@@ -513,11 +516,11 @@ if __name__ == '__main__':
     #print mac_map
     #rcr.rcr_set_nics_dict(vmID, mac_map)
     
-    (vmID_new,vmID,snapID) = rcr.rcr_create_vm_by_snap(vmName, snapName)
-    rcr.rcr_swap_mic(vmID_new,vmID)
-    rcr.rcr_swap_name(vmID_new,vmID)
+    #(vmID_new,vmID,snapID) = rcr.rcr_create_vm_by_snap(vmName, snapName)
+    #rcr.rcr_swap_mic(vmID_new,vmID)
+    #rcr.rcr_swap_name(vmID_new,vmID)
 
-    rcr.rcr_restore_with_memory_snap(vmID, vmID_new,snapID)
-    print 'All task done!!!'
+    #rcr.rcr_restore_with_memory_snap(vmID, vmID_new,snapID)
+    #print 'All task done!!!'
     #OK
     #rcr.rcr_rename_vm('vm01', 'tmp_vm')

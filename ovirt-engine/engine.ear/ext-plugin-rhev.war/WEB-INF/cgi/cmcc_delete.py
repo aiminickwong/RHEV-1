@@ -78,6 +78,7 @@ class RedhatCmccDelete(object):
         print snapID
 
         self.rcd_deleteSnap_fromBackend(vmID,snapID)
+        self.rcd_deleteSnap_memoryVolume(vmID, snapID)
         self.rcd_deleteSnap_fromDb(snapID)
 
     @calc_time_wrap
@@ -87,6 +88,14 @@ class RedhatCmccDelete(object):
         for vmObj in self.api.vms.list():
            if vmObj.get_name() == vmName:
                return vmObj.get_id()
+        return None
+
+    def rcd_get_vmObj(self, vmName):
+        """
+        """
+        for vmObj in self.api.vms.list():
+           if vmObj.get_name() == vmName:
+               return vmObj
         return None
     
     @calc_time_wrap
@@ -105,47 +114,67 @@ class RedhatCmccDelete(object):
     def rcd_deleteSnap_fromBackend(self, vmID, snapID):
         """
         """
-
-        memory_volume_list = self.rcd_get_memoryVolumeList(snapID)
-        for memory_volume in memory_volume_list:
-            cmd = 'lvremove %s' % memory_volume
-            print cmd
-            self.rcd_call_backendCmd(cmd)
         
         volumeID_list = self.rcd_get_volumeIDList(snapID)
         for volumeID in volumeID_list:
             print '==>'*20
             print 'volumeID: ',
             print volumeID
-            actVolID = self.rcd_get_actVolID(volumeID)
-            print 'actVolID: ',
-            print actVolID
-            actVolPath = self.rcd_get_actVolPath(volumeID, actVolID)
-            print 'actVolPath: ',
-            print actVolPath
-            cmd = 'python /usr/share/vdsm/volumeBackendHandler.py delete '
-            cmd += '%s %s %s'% (actVolPath, vmID, volumeID)
+            diskName = self.rcd_get_diskName(vmID, volumeID)
+            cmd = 'python /tli/mergeLivedVmChain.py %s %s %s'%(vmID,volumeID,diskName)
             print cmd
-            #self.rcd_call_backendCmd(cmd)
+            print self.rcd_call_backendCmd(cmd, vmID)
+
+
+    def rcd_deleteSnap_memoryVolume(self, vmID, snapID):
+        """
+        """
+        memory_volume_list = self.rcd_get_memoryVolumeList(snapID)
+        for memory_volume in memory_volume_list:
+            cmd = 'lvremove %s' % memory_volume
+            print cmd
+            print self.rcd_call_backendCmd(cmd, vmID)
+
 
     def rcd_get_memoryVolumeList(self, snapID):
         """
         """
         cmd = "select memory_volume from snapshots where snapshot_id='%s'"%snapID
         res = self.rcd_call_dbCmd(cmd).dictresult()[0].get('memory_volume')
-        resList = res.split(',')
-        print '==>'*20
-        print 'memory_volume: '
-	memory_volume_1 = os.path.join('/dev',resList[0],resList[3])
-	memory_volume_2 = os.path.join('/dev',resList[0],resList[5])
-        print 'memory_volume_1: '
-        print memory_volume_1
-        print 'memory_volume_2: '
-        print memory_volume_2
         memory_volume_list = []
-        memory_volume_list.append(memory_volume_1)
-        memory_volume_list.append(memory_volume_2)
+        if res:
+            resList = res.split(',')
+            print '==>'*20
+            print 'memory_volume: '
+	    memory_volume_1 = os.path.join('/dev',resList[0],resList[3])
+	    memory_volume_2 = os.path.join('/dev',resList[0],resList[5])
+            print 'memory_volume_1: '
+            print memory_volume_1
+            print 'memory_volume_2: '
+            print memory_volume_2
+            memory_volume_list.append(memory_volume_1)
+            memory_volume_list.append(memory_volume_2)
         return memory_volume_list
+
+    def rcd_get_diskName(self, vmID, volumeID):
+        """
+        """
+        cmd = "select * from images where image_guid='%s'" % volumeID 
+        imageID = self.rcd_call_dbCmd(cmd).dictresult()[0].get('image_group_id')
+
+        cmd = 'vdsClient -s 0 list vms:%s' % vmID
+        res = self.rcd_call_backendCmd(cmd, vmID)
+        for i in res.split('\r\n'):
+            if i.strip().startswith('devices'):
+                dataStr=i.split("=",1)[1]
+                devlist = eval(dataStr)
+                for dev in devlist:
+                    if dev.has_key('imageID') and dev.has_key('name'):
+                        if dev['imageID'] == imageID:
+                            return dev['name']
+                        #continue
+
+        return None
 
         
     def rcd_get_actVolPath(self, volumeID, actVolID):
@@ -185,12 +214,12 @@ class RedhatCmccDelete(object):
             cmdList = [cmd1, cmd2, cmd3 ]
             for cmd in cmdList:
                 print cmd
-                #self.rcd_call_dbCmd(cmd)
+                self.rcd_call_dbCmd(cmd)
 
         cmd = "delete from snapshots "
         cmd +="a where a.snapshot_id='%s'"%snapID
         print cmd
-        #self.rcd_call_dbCmd(cmd)
+        self.rcd_call_dbCmd(cmd)
 
 
     def rcd_get_volumeIDList(self, snapID):
@@ -211,36 +240,25 @@ class RedhatCmccDelete(object):
         """
         cmd = "select * from images where image_guid='%s'" % volumeID
         parentID = self.rcd_call_dbCmd(cmd).dictresult()[0].get('parentid')
-        print 'volumeID:%s de parentID:%s ' % (volumeID, parentID)
         return parentID
 
-
     def rcd_get_actVolID(self, volumeID):
-        conn = self.conn
-        cmd =  "select * from images where parentid='%s'" % volumeID
-        res  = self.rcd_call_dbCmd(cmd).dictresult()
-        if len(res)>0:
-            volumeID = res[0].get('image_guid')
-            return self.rcd_get_actVolID(volumeID)
-
-        return volumeID
-
+        return self.rcd_get_parentID(volumeID)
 
     def rcd_call_dbCmd(self, cmd):
         """
         """
         conn = self.conn
         cmd = cmd
+        print cmd
         return conn.query(cmd)
 
-    def rcd_get_hostInfo(self, vmName):
+    def rcd_get_hostInfo(self, vmID):
         """
         """
-        #return ('root',self.rhevhIp,config.OVIRT_PASSWORD)
-        
         hostIP = ''
         for vmObj in self.api.vms.list():
-            if vmObj.get_name() == vmName:
+            if vmObj.get_id() == vmID:
                 hostIP = self.api.hosts.get(id=vmObj.host.id).address
         if hostIP:
             return ('root', hostIP, config.OVIRT_PASSWORD)
@@ -248,10 +266,10 @@ class RedhatCmccDelete(object):
         return None
     
 
-    def rcd_call_backendCmd(self,cmd, vmName):
+    def rcd_call_backendCmd(self,cmd,vmID):
         """ 
         """ 
-        user,ip,password = self.rcd_get_hostInfo(vmName)
+        user,ip,password = self.rcd_get_hostInfo(vmID)
         print user,
         print ip
         print password
@@ -288,33 +306,37 @@ class RedhatCmccDelete(object):
 
 if __name__ == '__main__':
     from pprint import pprint
-
-    begin_time = Utils().rpc_get_current_time()
-
+    import sys
+    if len(sys.argv) > 2:
+        vmName = sys.argv[1]
+        snapName = sys.argv[2]
+    else:
+        raise "Error"
     api = get_api()
-
     rcd = RedhatCmccDelete(api)
-    vmName = 'disktest'
-    snapName = 'snap2'
-    
-    #snapID = rcd.rcd_get_snapID(vmName, snapName)
 
-    #cmd = "select * from images where vm_snapshot_id='%s'" % snapID 
-    #res = rcd.rcd_call_dbCmd(cmd).dictresult()
-    #print '==>'*20
-    #print 'all volumeID: ',
-    #for r in res:
-    #    pprint(r)
-    #    print 
-    #print '==>'*20
-     
-    
-    #rcd.rcd_delete_snap(vmName, snapName)
-    cmd = 'ls /'
-    print rcd.rcd_call_backendCmd(cmd, vmName)
-    
+    #begin_time = Utils().rpc_get_current_time()
 
-    end_time = Utils().rpc_get_current_time()
-    print 'used time: ',
-    print int(end_time)-int(begin_time)
+    vmObj = rcd.rcd_get_vmObj(vmName)
+    vmID = vmObj.get_id()
+
+    print 'vmName: ', vmName
+    print 'vmID: ',vmID
+    print 'snapName: ', snapName
+
+    for disk in vmObj.get_disks().list():
+        print disk.get_id()
+    
+    snapID = rcd.rcd_get_snapID(vmName, snapName)
+    cmd = "select * from images where vm_snapshot_id='%s'" % snapID 
+    res = rcd.rcd_call_dbCmd(cmd).dictresult()
+    print res
+    print '==>'*20
+    print 'all volumeID: ',
+    for r in res:
+        pprint(r)
+        print 
+    print '==>'*20
+
+    rcd.rcd_delete_snap(vmName, snapName)
     
