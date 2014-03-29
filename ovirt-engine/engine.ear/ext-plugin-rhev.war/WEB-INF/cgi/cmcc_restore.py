@@ -388,7 +388,7 @@ class RedhatCmccRestore(object):
 
             sqlcmd = "update snapshots \
                                 set memory_volume='%s' \
-                                where vm_id='%s'"%(hiberVolHandle,vmID_new)
+                                where snapshot_type='ACTIVE' and vm_id='%s'"%(hiberVolHandle,vmID_new)
 
             self._callDbCmd(sqlcmd)
 

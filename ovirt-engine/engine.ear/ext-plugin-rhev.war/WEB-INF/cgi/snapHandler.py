@@ -17,6 +17,7 @@ from ovirtsdk.infrastructure.brokers import VMSnapshots
 
 from utils import Utils
 from cmcc_restore import RedhatCmccRestore
+from cmcc_restore2link import RedhatCmccRestore2Link
 from cmcc_snaplist import RedhatCmccSnapMap
 from cmcc_delete import RedhatCmccDelete
 import os               # Miscellaneous OS interfaces.
@@ -150,15 +151,15 @@ class SnapshotHandler(object):
         """
         snapNum = len(self.ssh_get_vmObj(vmName).snapshots.list())
         print snapNum
-        if snapNum == 1:  
-            enMemery = self.enMemery
-            self.enMemery = 0
-            self._ssh_create_snap(vmName, internalSnapName)
-            #Snapshot '_.internal' creation for VM 'vm2' has been completed.
-            self.rcr_wait_event("Snapshot '%s' creation for VM '%s' has been completed." % (internalSnapName,vmName))
-            self.enMemery = enMemery
-            snap_uuid = self._ssh_create_snap(vmName, snapName)
-            return snap_uuid
+        #if snapNum == 1:  
+        #    enMemery = self.enMemery
+        #    self.enMemery = 0
+        #    self._ssh_create_snap(vmName, internalSnapName)
+        #    #Snapshot '_.internal' creation for VM 'vm2' has been completed.
+        #    self.rcr_wait_event("Snapshot '%s' creation for VM '%s' has been completed." % (internalSnapName,vmName))
+        #    self.enMemery = enMemery
+        #    snap_uuid = self._ssh_create_snap(vmName, snapName)
+        #    return snap_uuid
         return self._ssh_create_snap(vmName, snapName)
         
     
@@ -290,6 +291,58 @@ class SnapshotHandler(object):
         rcr.rcr_restore_with_memory_snap(vmID, vmID_new,snapID)
         print 'All task done!!!'
 
+    def ssh_restore_snap_link(self, vmName, snapName):
+        """
+        """
+        rcs = RedhatCmccSnapMap(self.api)
+        snapMap = rcs.rcs_get_snapMap(vmName)
+        snapInfo = snapMap.get(snapName)
+        realVmName = snapInfo.get('vmName')
+        print 'realVmName: ',realVmName
+
+        vmObj = self.ssh_get_vmObj(vmName)
+        vmID = self.ssh_get_vmID(vmName)
+        print 'vmname', vmName
+        print vmObj.status.state
+        hostIP = None
+        if vmObj.status.state == 'up':
+            #hostIP = self.api.hosts.get(id=vmObj.host.id).address
+            #vmObj.shutdown()
+            print "we need poweroff current vm before we restore it from snapshot"
+            vmObj.stop()
+        #we need wait current vm been poweroff
+        print 'vmObj.status.state = ',vmObj.status.state
+        while vmObj.status.state != 'down':
+            try:
+                vmObj.stop()
+            except:
+                pass
+            vmObj = self.ssh_get_vmObj(vmName)
+            print 'vmObj.status.state = ',vmObj.status.state
+            time.sleep(10) 
+        rcr = RedhatCmccRestore()
+        if realVmName != vmName:
+            vmID = self.ssh_get_vmID(vmName)
+            vmID_new = self.ssh_get_vmID(realVmName)
+            rcr.rcr_swap_name(vmID_new,vmID)
+
+        snapMap = rcs.rcs_get_snapMap(vmName)
+
+        if snapMap.keys()[-1] == snapName:
+            vmObj = self.ssh_get_vmObj(vmName)
+            for snapObj in vmObj.get_snapshots().list():
+                if snapObj.get_description() == 'Active VM':
+                    continue
+                if snapObj.get_description() == snapName:
+                    snapshotParams = params.Action(restore_memory=True)
+                    snapObj.restore(action=snapshotParams)
+                    vmObj.start()
+
+            print 'link task done!!!'
+            os._exit(0)
+        rcrl = RedhatCmccRestore2Link(self.api)
+        rcrl.rcrl_link_restore(vmName, snapName)
+        print 'All task done!!!'
 
     def ssh_list_snap(self, vmName, snapName):
         """
@@ -372,6 +425,7 @@ def get_option():
                                  or 'create': create a new snapshot for vm \
                                  or 'delete': delete the snapshot with snapshotName\
                                  or 'restore': restore vm using the snapshot \
+                                 or 'restore2link': restore vm using the snapshot link \
                                  or 'cleanup': clean up _. vms")
         parser.add_option('-v', action='store', dest='vmName')
         parser.add_option('-s', action='store', dest='snapName')
@@ -397,6 +451,7 @@ if __name__ == '__main__':
                   'list': ssh.ssh_list_snap,
                   'delete': ssh.ssh_delete_snap,
                   'restore': ssh.ssh_restore_snap,
+                  'restore2link': ssh.ssh_restore_snap_link,
                   'cleanup': ssh.ssh_cleanup,}
 
         print hostInfo, option, vmName, snapName

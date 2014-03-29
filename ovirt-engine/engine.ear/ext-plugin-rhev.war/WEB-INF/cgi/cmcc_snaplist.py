@@ -45,6 +45,8 @@ class RedhatCmccSnapMap(object):
         for snapObj in vmObj.get_snapshots().list():
             if snapObj.get_description() == 'Active VM': 
                 continue
+            if snapObj.get_description() == internalSnapName: 
+                continue
             snapName = snapObj.get_description()
             k = snapName
             v = dict(snapObj=snapObj, 
@@ -97,6 +99,7 @@ class RedhatCmccSnapMap(object):
         """
         allVmObjList = self.api.vms.list()
         allVmNameList = [ vo.get_name() for vo in allVmObjList ]
+        rcsm = RedhatCmccSnapMap(self.api)
         cleanVmList = []
         for vn in allVmNameList: 
             if vn.startswith(PREFIX):
