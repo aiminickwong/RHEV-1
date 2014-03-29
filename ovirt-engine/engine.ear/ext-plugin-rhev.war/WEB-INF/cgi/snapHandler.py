@@ -328,18 +328,18 @@ class SnapshotHandler(object):
 
         snapMap = rcs.rcs_get_snapMap(vmName)
 
-        if snapMap.keys()[-1] == snapName:
-            vmObj = self.ssh_get_vmObj(vmName)
-            for snapObj in vmObj.get_snapshots().list():
-                if snapObj.get_description() == 'Active VM':
-                    continue
-                if snapObj.get_description() == snapName:
-                    snapshotParams = params.Action(restore_memory=True)
-                    snapObj.restore(action=snapshotParams)
-                    vmObj.start()
+        #if snapMap.keys()[-1] == snapName:
+         #   vmObj = self.ssh_get_vmObj(vmName)
+         #   for snapObj in vmObj.get_snapshots().list():
+         #       if snapObj.get_description() == 'Active VM':
+         #           continue
+         #       if snapObj.get_description() == snapName:
+         #           snapshotParams = params.Action(restore_memory=True)
+         #           snapObj.restore(action=snapshotParams)
+         #           vmObj.start()
 
-            print 'link task done!!!'
-            os._exit(0)
+         #   print 'link task done!!!'
+         #   os._exit(0)
         rcrl = RedhatCmccRestore2Link(self.api)
         rcrl.rcrl_link_restore(vmName, snapName)
         print 'All task done!!!'
@@ -450,8 +450,8 @@ if __name__ == '__main__':
         acitonDict = {'create': ssh.ssh_create_snap,
                   'list': ssh.ssh_list_snap,
                   'delete': ssh.ssh_delete_snap,
-                  'restore': ssh.ssh_restore_snap,
-                  'restore2link': ssh.ssh_restore_snap_link,
+                  'restore2clone': ssh.ssh_restore_snap,
+                  'restore': ssh.ssh_restore_snap_link,
                   'cleanup': ssh.ssh_cleanup,}
 
         print hostInfo, option, vmName, snapName

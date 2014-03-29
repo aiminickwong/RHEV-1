@@ -241,26 +241,6 @@ class RedhatCmccRestore2Link(object):
             memory_volume_list.append(memory_volume_2)
         return memory_volume_list
 
-    def rcd_get_diskName(self, vmID, volumeID):
-        """
-        """
-        cmd = "select * from images where image_guid='%s'" % volumeID 
-        imageID = self.rcd_call_dbCmd(cmd).dictresult()[0].get('image_group_id')
-
-        cmd = 'vdsClient -s 0 list vms:%s' % vmID
-        res = self.rcd_call_backendCmd(cmd, vmID)
-        for i in res.split('\r\n'):
-            if i.strip().startswith('devices'):
-                dataStr=i.split("=",1)[1]
-                devlist = eval(dataStr)
-                for dev in devlist:
-                    if dev.has_key('imageID') and dev.has_key('name'):
-                        if dev['imageID'] == imageID:
-                            return dev['name']
-                        #continue
-
-        return None
-
         
     def rcd_get_actVolPath(self, volumeID, actVolID):
         """
@@ -417,9 +397,10 @@ class RedhatCmccRestore2Link(object):
                     ssh.close()
             elif expect == 2:
                 print 'ssh expect --> %d' % expect
-                ssh.sendline('\n')
+                #ssh.sendline('\n')
             else:
-                    print 'ssh finished...%d' % expect
+                print 'ssh finished...%d' % expect
+
         except pexpect.EOF:
             print '====?2'
             ssh.close()

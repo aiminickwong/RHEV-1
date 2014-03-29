@@ -6,6 +6,7 @@
 
 from utils import Utils
 from xml.dom import minidom
+from xml.dom.minidom import parseString as _domParseStr
 import config
 import xml.dom
 import optparse
@@ -127,7 +128,7 @@ class RedhatCmccDelete(object):
                                     print 'snapID: ',
                                     print snapID
 
-                                    self.rcd_deleteSnap_fromBackend(vmID,snapID)
+                                    self.rcd_deleteSnap_fromBackend(vmName,vmID, snapID)
                                     self.rcd_deleteSnap_memoryVolume(vmID, snapID)
                                     self.rcd_deleteSnap_fromDb(snapID)
                                     return
@@ -177,20 +178,28 @@ class RedhatCmccDelete(object):
  
     
     @calc_time_wrap
-    def rcd_deleteSnap_fromBackend(self, vmID, snapID):
+    def rcd_deleteSnap_fromBackend(self, vmName, vmID, snapID):
         """
         """
         
-        volumeID_list = self.rcd_get_volumeIDList(snapID)
-        for volumeID in volumeID_list:
-            print '==>'*20
-            print 'volumeID: ',
-            print volumeID
-            diskName = self.rcd_get_diskName(vmID, volumeID)
-            cmd = 'python /tli/mergeLivedVmChain.py %s %s %s'%(vmID,volumeID,diskName)
-            print cmd
-            print self.rcd_call_backendCmd(cmd, vmID)
+        disk = self.rcd_get_diskName(vmName, vmID)
+        print 'disk keys: %s ' % disk
 
+        for imageID in disk.keys():
+            cmd = "SELECT image_guid from images where "
+            cmd += "vm_snapshot_id='%s' and image_group_id='%s'" % (snapID, imageID)
+
+            res = self.rcd_call_dbCmd(cmd).dictresult()
+            if len(res) > 0 : 
+                volumeID=res[0].get('image_guid')
+                print '==>'*20
+                print 'volumeID: ',
+                print volumeID
+                diskName = disk[imageID]
+
+                cmd = 'python /tli/mergeLivedVmChain.py %s %s %s'%(vmID,volumeID,diskName)
+                print cmd
+                print self.rcd_call_backendCmd(cmd, vmID)
 
     def rcd_deleteSnap_memoryVolume(self, vmID, snapID):
         """
@@ -222,26 +231,45 @@ class RedhatCmccDelete(object):
             memory_volume_list.append(memory_volume_2)
         return memory_volume_list
 
-    def rcd_get_diskName(self, vmID, volumeID):
+    def _filterSnappableDiskDevices(self,diskDeviceXmlElements):
+        return filter(lambda(x): not(x.getAttribute('device')) or
+                      x.getAttribute('device') in ['disk', 'lun'],
+                      diskDeviceXmlElements)
+
+
+    def rcd_get_diskName(self, vmName, vmID):
         """
         """
-        cmd = "select * from images where image_guid='%s'" % volumeID 
-        imageID = self.rcd_call_dbCmd(cmd).dictresult()[0].get('image_group_id')
+        
+        cmd = 'cat /var/run/libvirt/qemu/%s.xml' % vmName
+        srcDomXML = self.rcd_call_backendCmd(cmd, vmID)
 
-        cmd = 'vdsClient -s 0 list vms:%s' % vmID
-        res = self.rcd_call_backendCmd(cmd, vmID)
-        for i in res.split('\r\n'):
-            if i.strip().startswith('devices'):
-                dataStr=i.split("=",1)[1]
-                devlist = eval(dataStr)
-                for dev in devlist:
-                    if dev.has_key('imageID') and dev.has_key('name'):
-                        if dev['imageID'] == imageID:
-                            return dev['name']
-                        #continue
+        parsedSrcDomXML = _domParseStr(srcDomXML)
+       
+        domainXmlElements = parsedSrcDomXML.getElementsByTagName('domain')[0]
+  
+        #domainXmlElements = parsedSrcDomXML.childNodes[0].getElementsByTagName('domain')[0]
 
-        return None
+        allDiskDeviceXmlElements = domainXmlElements.getElementsByTagName('devices')[0].getElementsByTagName('disk')
 
+        snappableDiskDeviceXmlElements = \
+            self._filterSnappableDiskDevices(allDiskDeviceXmlElements)
+ 
+        disk = {}
+        for snappableDiskDeviceXmlElement in snappableDiskDeviceXmlElements:
+            diskType = snappableDiskDeviceXmlElement.getAttribute('type')
+            if diskType not in ['file', 'block']:
+                continue
+            devname = snappableDiskDeviceXmlElement.getElementsByTagName('target')[0].\
+                        getAttribute('dev')
+            source = snappableDiskDeviceXmlElement.getElementsByTagName('source')[0].\
+                        getAttribute('dev')
+            
+            imageID = os.path.basename(os.path.dirname(source))
+            disk[imageID] = devname
+
+        return disk
+            
         
     def rcd_get_actVolPath(self, volumeID, actVolID):
         """
