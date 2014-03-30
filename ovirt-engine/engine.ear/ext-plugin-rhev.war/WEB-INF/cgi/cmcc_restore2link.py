@@ -110,21 +110,6 @@ class RedhatCmccRestore2Link(object):
         return None
  
     
-    @calc_time_wrap
-    def rcd_deleteSnap_fromBackend(self, vmID, snapID):
-        """
-        """
-        
-        volumeID_list = self.rcd_get_volumeIDList(snapID)
-        for volumeID in volumeID_list:
-            print '==>'*20
-            print 'volumeID: ',
-            print volumeID
-            diskName = self.rcd_get_diskName(vmID, volumeID)
-            cmd = 'python /tli/mergeLivedVmChain.py %s %s %s'%(vmID,volumeID,diskName)
-            print cmd
-            print self.rcd_call_backendCmd(cmd, vmID)
-
     def rcrl_link_restore(self, vmName, snapName):
         """
         """
@@ -168,8 +153,23 @@ class RedhatCmccRestore2Link(object):
             #diskName = self.rcd_get_diskName(vmID, volumeID)
             #diskVols[diskName] = volumeID
             #print snapVolumeID
+        print '==>' * 30
+        print 'activeDisks len: ',
+        print len(activeDisks.keys())
+        print 'activeDisks keys: '
+        print activeDisks.keys()
+
+        print 'snapDisks len: ',
+        print len(snapDisks.keys())
+        print 'snapDisks keys: '
+        print snapDisks.keys()
+        print '==>' * 30
+
+        flag = 0
         for actDsk in activeDisks.keys():
             if snapDisks.has_key(actDsk):
+                print flag 
+                flag = flag + 1
                 print '=3=>'*20
                 for snapVol in snapDisks[actDsk]:
                     if snapVol['vm_snapshot_id'] == snapID:
@@ -181,15 +181,19 @@ class RedhatCmccRestore2Link(object):
                                 print activeVol
                                 print '=6=>'*20
                                 #call back end link clone this snap volume to active volume
-                                cmd = "SELECT storage_domain_id from image_storage_domain_map where image_id='%s'" % activeVol['image_guid']
-                                storageDomainID = self.rcd_call_dbCmd(cmd).dictresult()[0].get('storage_domain_id')
-                                cmd = "SELECT storage_pool_id from vds_groups where vds_group_id='%s'" % vmObj.cluster.id
+                                cmd = "SELECT storage_domain_id from image_storage_domain_map"
+                                cmd += " where image_id='%s'" % activeVol['image_guid']
+                                storageDomainID = self.rcd_call_dbCmd(cmd).dictresult()[0].\
+                                                      get('storage_domain_id')
+                                cmd = "SELECT storage_pool_id from vds_groups where "
+                                cmd += "vds_group_id='%s'" % vmObj.cluster.id
                                 storagePoolID = self.rcd_call_dbCmd(cmd).dictresult()[0].get('storage_pool_id')
                                 activePath="/rhev/data-center/%s/%s/images/%s/%s" % (storagePoolID,storageDomainID,actDsk,activeVol['image_guid'])
                                 print activePath
                                 snapPath="/rhev/data-center/%s/%s/images/%s/%s" % (storagePoolID,storageDomainID,actDsk,snapVol['image_guid'])
                                 print snapPath
-                                cmd = 'python /tli/restoreVolLink.py %s %s' % (activePath,snapPath)
+
+                                cmd = 'python /usr/share/vdsm/restoreVolLink.py %s %s 0' % (activePath,snapPath)
                                 print cmd
                                 print self.rcrl_call_backendCmd(cmd, hostIP)
 
@@ -380,7 +384,7 @@ class RedhatCmccRestore2Link(object):
 
         ssh = pexpect.spawn('ssh %s@%s "%s"'%(user,ip,cmd), timeout=330)
         try:
-            expect = ssh.expect(['password', 'continue connecting (yes/no)?',''], timeout=5)
+            expect = ssh.expect(['password', 'continue connecting (yes/no)?',''], timeout=330)
             if expect == 0:
                 print 'ssh expect --> %d' % expect
                 ssh.sendline(password)

@@ -197,7 +197,7 @@ class RedhatCmccDelete(object):
                 print volumeID
                 diskName = disk[imageID]
 
-                cmd = 'python /tli/mergeLivedVmChain.py %s %s %s'%(vmID,volumeID,diskName)
+                cmd = 'python /usr/share/vdsm/mergeLivedVmChain.py %s %s %s'%(vmID,volumeID,diskName)
                 print cmd
                 print self.rcd_call_backendCmd(cmd, vmID)
 
