@@ -6,12 +6,22 @@
 
 from utils import Utils
 from xml.dom import minidom
+from xml.dom.minidom import parseString as _domParseStr
 import config
 import xml.dom
 import optparse
 import time
 import os
 import ovirtsdk.api
+
+from ovirtsdk.xml import params
+from ovirtsdk.infrastructure import errors
+from ovirtsdk.infrastructure import contextmanager
+from ovirtsdk.infrastructure.brokers import VMNic
+from ovirtsdk.infrastructure.brokers import VMNics
+
+from lxml import etree
+from ovirt_image_uploader.ovf.ovfenvelope import *
 import pg
 import pexpect
 
@@ -126,7 +136,7 @@ class RedhatCmccRestore2Link(object):
         snapVolumeID_list = self.rcd_get_volumeIDList(snapID)
         activeID = self.rcd_get_snapID(vmName, 'Active VM')
         activeVolumeID_list = self.rcd_get_volumeIDList(activeID)
-        #print "vmID=",vmObj.id
+        print "vmID=",vmObj.id
         vmID = vmObj.id
         print "hostIP=",hostIP
         print '==>'*20
@@ -211,9 +221,126 @@ class RedhatCmccRestore2Link(object):
             cmd = "update snapshots set memory_volume='%s' where snapshot_type='ACTIVE' and vm_id='%s'"%(hiberVolHandle,vmID)
             self.rcd_call_dbCmd(cmd)
 
+
+        cmd = "select vm_configuration from snapshots where snapshot_id='%s'" % snapID
+        vm_configurationStr = self.rcd_call_dbCmd(cmd).dictresult()[0].get('vm_configuration')
+
+        tree = etree.fromstring(vm_configurationStr)
+        iterator = tree.findall('Content/Section')
+
+        cmd = "delete from vm_interface "
+        cmd +="a where a.vm_guid='%s'" % vmID
+        self.rcd_call_dbCmd(cmd)
+
+        cmd = "delete from vm_interface_statistics "
+        cmd +="a where a.vm_id='%s'" % vmID
+        self.rcd_call_dbCmd(cmd)
+
+        cmd = "delete from vm_device "
+        cmd +="a where a.type='interface' and a.vm_id='%s'" % vmID
+        self.rcd_call_dbCmd(cmd)
+
+        apiID = self.api.id
+        vnics = VMNics(vmObj, apiID)
+
+        for sec in iterator:
+                for attr in sec.attrib:
+                    if str(sec.attrib[attr]).endswith('VirtualHardwareSection_Type'):
+                        #print "tag(%s) text(%s) attr(%s) class(%s)" % (sec.tag, sec.text,sec.attrib, sec)
+                        itemElement = sec.findall('Item')
+                        for item in itemElement:
+                            #print "item tag(%s) item text(%s) item attr(%s) class(%s)" % (item.tag, item.text,item.attrib, item)
+                            resource_type = None
+                            mItem = {}
+                            for elem in item:
+                                #print "tag(%s) value(%s)" % (elem.tag, elem.text)
+                                if str(elem.tag).endswith('ResourceType') and elem.text == '10':
+                                    resource_type = elem.text
+                                    mItem['resource_type']=elem.text
+                                elif str(elem.tag).endswith('MACAddress'):
+                                    mItem['MACAddress']=elem.text
+                                elif str(elem.tag).endswith('InstanceId'):
+                                    mItem['InstanceId']=elem.text
+                                elif str(elem.tag).endswith('OtherResourceType'):
+                                    mItem['OtherResourceType']=elem.text
+                                elif str(elem.tag).endswith('ResourceSubType'):
+                                    mItem['ResourceSubType']=elem.text
+                                elif str(elem.tag).endswith('speed'):
+                                    mItem['speed']=elem.text
+                                elif str(elem.tag).endswith('Linked'):
+                                    mItem['Linked']=elem.text
+                                elif str(elem.tag).endswith('Caption'):
+                                    mItem['Caption']=elem.text
+                                elif str(elem.tag).endswith('Connection'):
+                                    mItem['Connection']=elem.text
+                                elif str(elem.tag).endswith('Name'):
+                                    mItem['Name']=elem.text
+                                elif str(elem.tag).endswith('Address'):
+                                    mItem['Address']=elem.text
+                                else:
+                                    mItem[str(elem.tag)]=elem.text
+
+                            if mItem.has_key('resource_type') and mItem['resource_type'] == '10':
+                                print '=8=>'*20
+                                #print etree.tostring(item)
+                                print mItem
+                                print '=9=>'*20
+                                nicParams = params.NIC(name=mItem['Name'])
+                                vnics.add( nic=nicParams )
+                                vnic_profile_id=''
+                                cmd = "select id from vnic_profiles_view where name='%s'" % mItem['Connection']
+                                vnic_profile_id=self.rcd_call_dbCmd(cmd).dictresult()[0].get('id')
+
+                                #cmd = "INSERT INTO vm_interface (id, vm_guid,mac_addr, name, speed, type, linked,vnic_profile_id) "
+                                #cmd += "VALUES ('%s', '%s', '%s', '%s', %s, %s,%s,'%s')" % (mItem['InstanceId'],vmID,
+                                #     mItem['MACAddress'],mItem['Name'],mItem['speed'],mItem['ResourceSubType'],mItem['Linked'],vnic_profile_id)
+                                cmd = "update vm_interface set mac_addr='%s' where vm_guid='%s' and name='%s'" % (mItem['MACAddress'],vmID,mItem['Name'])
+                                self.rcd_call_dbCmd(cmd)
+
+                                cmd = "update vm_interface set vnic_profile_id='%s'  where vm_guid='%s' and name='%s'" % (vnic_profile_id,vmID,mItem['Name'])
+                                self.rcd_call_dbCmd(cmd)
+
+                                cmd = "update vm_interface set type=%s  where vm_guid='%s' and name='%s'" % (mItem['ResourceSubType'],vmID,mItem['Name'])
+                                self.rcd_call_dbCmd(cmd)
+
+                                cmd = "select id from vm_interface where vm_guid='%s' and name='%s'" % (vmID,mItem['Name'])
+                                mItem['InstanceId'] = self.rcd_call_dbCmd(cmd).dictresult()[0].get('id')
+
+                                #cmd = "INSERT INTO vm_interface_statistics (id, vm_id)"
+                                #cmd +=" VALUES ('%s', '%s') " % (mItem['InstanceId'],vmID)
+                                #self.rcd_call_dbCmd(cmd)
+
+                                #if not mItem['Alias']:
+                                #    mItem['Alias'] = ''
+                                #cmd = "INSERT INTO vm_device (device_id, vm_id, type, device, boot_order,is_plugged,is_readonly,alias,address) " 
+                                #cmd +="VALUES ('%s', '%s', 'interface', '%s', %s, %s,%s,'%s','{bus=0x00, domain=0x0000, type=pci, slot=0x07, function=0x0}')" % (
+                                #        mItem['InstanceId'],vmID,
+				#	mItem['Device'],mItem['BootOrder'],mItem['IsPlugged'],mItem['IsReadOnly'],mItem['Alias'])
+                                #self.rcd_call_dbCmd(cmd)
+
+                                if mItem['Alias']:
+                                    cmd = "update vm_device set alias='%s'  where device_id='%s'" % (mItem['Alias'],mItem['InstanceId'])
+                                    self.rcd_call_dbCmd(cmd)
+                                cmd = "update vm_device set boot_order=%s  where device_id='%s'" % (mItem['BootOrder'],mItem['InstanceId'])
+                                self.rcd_call_dbCmd(cmd)
+                                cmd = "update vm_device set is_plugged=%s  where device_id='%s'" % (mItem['IsPlugged'],mItem['InstanceId'])
+                                self.rcd_call_dbCmd(cmd)
+                                cmd = "update vm_device set device='%s'  where device_id='%s'" % (mItem['Device'],mItem['InstanceId'])
+                                self.rcd_call_dbCmd(cmd)
+
+                                #{'OtherResourceType': 'rhevm', 'Caption': 'Ethernet adapter on rhevm', 'Address': None, }
+
+                                #if mItem['Linked'] == 'ture':
+                                #    mItem['Linked']=Ture
+                                #else:
+                                #    mItem['Linked']=False
+                                #mac = params.MAC(address=mItem['MACAddress']) 
+                                             #mac=mac,
+                                             #linked=mItem['Linked'],
+
+
         #power on the vm
         vmObj.start()
-
 
     def rcd_deleteSnap_memoryVolume(self, vmID, snapID):
         """
