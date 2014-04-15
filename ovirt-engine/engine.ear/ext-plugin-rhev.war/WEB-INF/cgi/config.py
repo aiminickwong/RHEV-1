@@ -6,8 +6,8 @@ OVIRT_CA_FILE =  '/usr/share/ovirt-engine/engine.ear/ext-plugin-rhev.war/WEB-INF
 OVIRT_DB_NAME = 'engine_20140321210203'
 OVIRT_DB_HOST = 'localhost'
 #OVIRT_DB_USER = 'engine'
-OVIRT_DB_USER = 'postgres'
-OVIRT_DB_PASSWORD = 'Redhat1!'
+OVIRT_DB_USER = 'engine_20140321210203'
+OVIRT_DB_PASSWORD = 'xlfKGXMI'
 
 PREFIX_FOR_VMNAME = '_.'
 MAXFD = 1024

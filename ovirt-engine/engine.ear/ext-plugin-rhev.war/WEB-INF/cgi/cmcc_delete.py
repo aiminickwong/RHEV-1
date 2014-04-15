@@ -127,10 +127,13 @@ class RedhatCmccDelete(object):
                                     print vmID
                                     print 'snapID: ',
                                     print snapID
-
-                                    self.rcd_deleteSnap_fromBackend(vmName,vmID, snapID)
-                                    self.rcd_deleteSnap_memoryVolume(vmID, snapID)
-                                    self.rcd_deleteSnap_fromDb(snapID)
+                                    print "XXXXXX"*30
+                                    #self.rcd_deleteSnap_fromBackend(vmName,vmID, snapID)
+                                    #self.rcd_deleteSnap_memoryVolume(vmID, snapID)
+                                    #self.rcd_deleteSnap_fromDb(snapID)
+                                    #return
+                                    cmd = "update snapshots set description='%s' where snapshot_id='%s'" % (internalSnapName,snapID)
+                                    self.rcd_call_dbCmd(cmd)
                                     return
                             #TODO 
                             cmd = "update snapshots set description='%s' where snapshot_id='%s'" % (internalSnapName,snapID)

@@ -398,15 +398,15 @@ class SnapshotHandler(object):
             vmID = self.ssh_get_vmID(vmName)
             print 'vmname', vmName
             print vmObj.status.state
-            if vmObj.status.state == 'up':
-                self._ssh_delete_snap(vmName,snapName)
-            else:
+            if vmObj.status.state == 'down':
                 vmObj = self.ssh_get_vmObj(vmName)
                 for snapObj in vmObj.get_snapshots().list():
                     if snapObj.get_description() == 'Active VM':
                         continue
                     if snapObj.get_description() == snapName:
                         snapObj.delete()
+            else:
+                self._ssh_delete_snap(vmName,snapName)
     
     def ssh_cleanup(self,vmName,snapName):
         """
